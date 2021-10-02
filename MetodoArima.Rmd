@@ -1,0 +1,79 @@
+---
+title: "Metodo Arima estimación de Datos"
+output: html_notebook
+---
+
+Esto es un Estudio de Metodo Arima para la estimación del valor  y su análisis,  la data tomado de: MSFT yahoo.finance.com
+https://es-us.finanzas.yahoo.com/quote/MSFT/history?p=MSFT
+
+1. Importing packages
+Se debe añadir
+{r load_libraries, warning=FALSE, message=FALSE} para evitar mensajes de error.
+
+
+```{r load_libraries, warning=FALSE, message=FALSE}
+
+library(tidyverse) # metapackage of all tidyverse packages
+library(dplyr)
+
+library(ggplot2)
+
+library(forecast)
+```
+
+
+```{r}
+msft <-read_csv("D:/d/2-ESTUDIO/R/LIbro Power bi R Python/seccion 2/Seccion II R/MSFT.csv")
+
+```
+
+
+```{r}
+
+msft$Date <-as.Date(msft$Date,"%d.%m.%Y")
+
+head(msft)
+
+```
+
+Los datos representas los valores de las acciones por fecha, la columna  Close represnta el valor de cierre.
+Se usará el metodo Arima para pronosticar el valor en 180 días.
+
+
+```{r}
+plot(msft$Date,msft$Close)
+```
+
+Antes de iniciar cualrquier análisis predictivo, es buena practica explorar el Dataset y entender cúal es el horizonte temporal que disponemos asi como identificar la variable que queremos predecir . En este caso se dispone de los datos desde el 07 de marzo del 2006 hasta el 4 de marzo del 2021 lo que significa 5 años de serie histórica. 
+
+Con esta serie histórica procedemos a realizar una estimación de unos 180  dias ( 10% de un total de 1825 días) de la variable close que es el valor de cierre de la acción.
+
+
+```{r}
+ts <-ts(msft,start = c(2016,03,7),frequency = 260) # 260 intervalos equivalente a 52 semana por 5 días
+modelo <- auto.arima(ts[,5]) # columna 5 Close
+pronostico<- forecast(modelo,180,level=95)# 
+
+pronostico
+        
+```
+
+
+```{r}
+plot(pronostico, main="Pronóstico con auto.arima",
+ylab=" Valor de Cierre de Acción")
+```
+
+
+Lo que hace la función forecast es llamar al objeto con el nombre modelo, y el número de proyecciones fuera de la muestra; adicionalmente pude construir intervalos de confianza a cualquier nivel.
+
+Para obtener esos pronósticos en una matriz (donde se guardarán los pronósticos con los intervalos de confianza solicitados), basta con realizar los siguiente:
+
+```{r}
+matriz.pronosticos <-data.frame(pronostico$mean,pronostico$lower,pronostico$upper)
+matriz.pronosticos
+
+```
+
+
+

@@ -1,0 +1,113 @@
+---
+title: "Metodo Prophet ( predicción de ventas)"
+output: html_notebook
+---
+
+
+Página de  Información
+https://ichi.pro/es/introduccion-a-prophet-r-140072028908999
+
+Los valores data tomado de: MSFT yahoo.finance.com
+https://es-us.finanzas.yahoo.com/quote/MSFT/history?p=MSFT
+
+1. Importing packages
+Se debe añadir
+{r load_libraries, warning=FALSE, message=FALSE} para evitar mensajes de error.
+
+```{r load_libraries, warning=FALSE, message=FALSE}
+
+library(tidyverse) # metapackage of all tidyverse packages
+library(dplyr)
+library(ggplot2)
+library(forecast)
+```
+
+La data la colocamos en la Pc y la cargamos.
+
+```{r}
+msftp <-read_csv("D:/d/2-ESTUDIO/R/LIbro Power bi R Python/seccion 2/Seccion II R/MSFT.csv")
+
+```
+
+Cambiamos el formato de la varible Date
+
+```{r}
+msftp$Date <-as.Date(msftp$Date,"%d.%m.%Y")
+
+head(msftp)
+```
+
+Selecionamos solo dos columnas ( Date y Close)
+
+```{r}
+Data <- select(msftp, Date, Close)
+head(Data)
+```
+
+```{r}
+# cambiar el nombre de la columna 'Date' y 'Close'requisito del metodo
+#Data%>% rename (ds = Date, y = Close)
+names(Data) <- c('ds', 'y')
+Datos <-Data
+head(Datos)
+```
+
+Librerias de predicción
+```{r}
+
+library(Rcpp)
+library(rlang)
+library(prophet)
+```
+Se dispone de datos desde el 7 de marzo del 2006 hasta el 4 de marzo del 
+2021 son 5 años de historia.
+Se procede a realizar 180 dias un 10% de 1825 días.
+
+```{r}
+
+m <- prophet(Datos)
+futuro <- make_future_dataframe(m, periods =180, include_history = TRUE)
+prediccion <- predict(m, futuro)
+
+```
+
+```{r}
+tail(futuro)
+```
+
+
+
+```{r}
+
+plot(m,prediccion, main = "Valor de la Accion",
+     xlab = "Tiempo",
+     ylab = "Valor de la Acción $",
+     
+     )
+
+```
+
+los puntos negros representan medidas reales
+La línea azul muestra el pronóstico de Prophet.
+la ventana azul claro indica intervalos de incertidumbre
+Si bien el pronóstico arroja muchas cosas, podemos centrarnos en algunas claves como;
+
+ds - fecha prevista
+yhat - predicción para el valor y (número de vistas) ese día
+yhat_lower - valor esperado más bajo para el rango de valores y pronosticado para ese día
+yhat_upper - valor esperado más alto para el rango de valores y pronosticado de ese día
+
+```{r}
+tail(forecast[c('ds','yhat', 'yhat_lower', 'yhat_upper')])
+
+```
+
+
+
+
+
+
+
+
+
+ 

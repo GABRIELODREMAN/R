@@ -1,0 +1,90 @@
+---
+title: "Metodo Lineal Multivariable"
+output: html_notebook
+---
+
+
+```{r load_libraries, warning=FALSE, message=FALSE }
+
+library(tidyverse) # metapackage of all tidyverse packages
+library(dplyr)
+library(ggplot2)
+```
+
+
+
+
+```{r}
+clientes <-read_csv("D:/d/2-ESTUDIO/R/LIbro Power bi R Python/seccion 2/Seccion II R/clientes.csv")
+
+data(clientes)
+head(clientes) # visualizamos los valores
+
+```
+
+
+
+```{r}
+str ( clientes ) # detalle de las variables
+
+
+```
+
+1.Analizar la relación entre variables
+
+El primer paso a la hora de establecer un modelo lineal múltiple es estudiar la relación que existe entre variables. Esta información es crítica a la hora de identificar cuáles pueden ser los mejores predictores para el modelo, qué variables presentan relaciones de tipo no lineal (por lo que no pueden ser incluidas) y para identificar colinialidad entre predictores. A modo complementario, es recomendable representar la distribución de cada variable mediante histogramas.
+
+Las dos formas principales de hacerlo son mediante representaciones gráficas (gráficos de dispersión) y el cálculo del coeficiente de correlación de cada par de variables.
+
+
+```{r}
+round(cor(x = clientes, method = "pearson"), 3)
+
+```
+
+```{r}
+library(psych)
+multi.hist(x = clientes, dcol = c("blue", "red"), dlty = c("dotted", "solid"),
+           main = "")
+
+
+```
+
+
+```{r}
+library(GGally)
+ggpairs(clientes, lower = list(continuous = "smooth"),
+        diag = list(continuous = "barDiag"), axisLabels = "none")
+
+
+```
+
+2.Generar el modelo
+
+Como se ha explicado en la introducción, hay diferentes formas de llegar al modelo final más adecuado. En este caso se va a emplear el método mixto iniciando el modelo con todas las variables como predictores y realizando la selección de los mejores predictores con la medición Akaike(AIC).
+
+
+```{r}
+
+modelo <- lm(edad ~ ingreso + gasto + ahorros , data = clientes )
+summary(modelo)
+
+
+```
+
+```{r}
+clientes$edadpredic <- predict(modelo,newdata = clientes)
+
+clientes
+```
+
+Es recomendable mostrar el intervalo de confianza para cada uno de los coeficientes parciales de regresión:
+
+
+```{r}
+
+confint(lm(edad ~ ingreso + gasto + ahorros , data = clientes ))
+
+```
+
+

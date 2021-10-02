@@ -1,0 +1,122 @@
+---
+title: "Metodo Lineal de una Variable"
+output: html_notebook
+---
+
+1. Importing packages
+
+Se debe añadir
+{r load_libraries, warning=FALSE, message=FALSE} para evitar mensajes de error.
+
+
+```{r load_libraries, warning=FALSE, message=FALSE }
+
+library(tidyverse) # metapackage of all tidyverse packages
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+clientes <-read_csv("D:/d/2-ESTUDIO/R/LIbro Power bi R Python/seccion 2/Seccion II R/clientes.csv")
+
+head(clientes) # visualizamos los valores
+
+```
+
+```{r}
+str ( clientes ) # detalle de las variables
+
+
+```
+
+Estudiar la correlación Previo a estimar el modelo de regresión lineal simple, se examina la correlación entre las variables. La correlación mide el grado de asociación entre las dos variables. Por su parte el coeficiente de correlación lineal de Pearson contrasta la correlación lineal entre las dos variables.
+
+
+```{r}
+round(cor(x = clientes, method = "pearson"), 3)
+
+```
+
+```{r}
+library(corrplot)
+corrplot(cor(dplyr::select(clientes,edad, ingreso,gasto,ahorros)),
+         method = "number", tl.col = "black")
+```
+
+
+
+La correlacion más alta a analizar es de ahorro vs Gasto 
+
+Analizamos Ahorro vs Gasto
+```{r}
+cor.test( clientes$ahorros, clientes$gasto )
+```
+
+Interpretación: 
+Las variables presentan un alto grado de correlación (-0.9153), la correlación negativa indica que están asociadas de forma inversa, esto es, valores altos de una de las variables se corresponden con valores bajos de la otra. Con un coeficiente de Pearson significativo (menor de 0.05) podemos asumir correlacion lineal entre las variables `Gasto`y `Ahorro`.
+
+
+Comprobar gráficamente la relación lineal entre las variables El diagrama de dispersión representa los valores de la variable independiente (x), junto con los de la variable dependiente (y). Permite determinar de una forma visual si hay una relación lineal entre ambas.
+
+```{r}
+plot( clientes$ahorros, clientes$gasto ) # # ( x, y )
+
+```
+
+
+```{r}
+library(ggplot2)
+ggplot(clientes, aes(x=clientes$ahorros, y=clientes$gasto)) + 
+  geom_point() + theme_light()
+
+```
+
+Realiza el ajuste del modelo.
+Con el análisis de Regresión Lineal Simple queremos construir un modelo que relacione la categoría del edad y el ingreso .
+
+La recta de regresión será la función que mejor explique la relación entre ambas variables.
+
+Hacemos la regresión lineal la función lm( y ~ x, data). Examinamos los coeficientes del modelo de regresión con la función summary( ).
+
+```{r}
+modeloR <- lm( clientes$ahorros ~ clientes$gasto, # ( y ~ x )
+               data = clientes )
+
+summary( modeloR ) # para ver el resumen del modelo
+
+
+```
+
+El modelo ajustado es significativo: Los coeficientes de regresión son 20675.8 y -17449.3, estos parámetros son significativos, con p-valor menor de 0.05 (2e-16). El error estándar para cada parámetro es 194 y 342 respectivamente. La R2 ajustada es 0.8379, que indica un buen ajuste del modelo (próximo a 1),
+
+El modelo tiene la forma de:
+
+ahorros = 20675.8− ( 17449.3)× gasto.
+
+
+
+Por último, representamos la recta del modelo de regresión: que es la ecuación de una recta y = mx + n, con ordenada en el origen 20675.8 (punto de corte con el eje Y), y con pendiente negativa -17499.3
+
+
+```{r}
+plot( clientes$ahorros, 
+      clientes$gasto, 
+
+      xlab = "Ahorros", 
+      ylab = "Gasto")
+
+
+abline(lm(clientes$gasto ~ clientes$ahorros, data = clientes))
+
+```
+
+```{r}
+ggplot(clientes, aes(x=clientes$ahorros, y=clientes$gasto)) + 
+  geom_point() +
+  geom_smooth(method='lm', formula=y~x, se=FALSE, col='dodgerblue1') +
+  theme_light()
+```
+
+la representación no es la mejor posible ya que existen grupos de datos que seria mejor analizarlos mediante otro modelo.
+
