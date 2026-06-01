@@ -1,0 +1,560 @@
+---
+title: "Proyecto de Investigacion de la Demanda de Energia HADDOP ANALISIS"
+output: 
+  html_document:
+    code_folding: show
+    theme:
+      bg: "#202123"
+      fg: "#B8BCC2"
+      primary: "#EA80FC"
+      secondary: "#00DAC6"
+      base_font:
+        google: Prompt
+      heading_font:
+        google: Proza Libre
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## ============================================================
+## PASO 1 - ARRANCAR HDFS
+## ============================================================
+
+```{r}
+shell(
+  "C:/BigData/Hadoop/sbin/start-dfs.cmd",
+  wait = FALSE
+)
+
+message("Esperando inicio HDFS...")
+
+Sys.sleep(30)
+```
+
+## ============================================================
+## PASO 2 - ARRANCAR YARN
+## ============================================================
+
+```{r}
+shell(
+  "C:/BigData/Hadoop/sbin/start-yarn.cmd",
+  wait = FALSE
+)
+
+message("Esperando inicio YARN...")
+
+Sys.sleep(30)
+
+
+```
+
+## ============================================================
+## PASO 3.1 - VERIFICAR PROCESOS HADOOP
+## ============================================================
+
+
+```{r}
+system("jps")
+
+# Debe aparecer:
+# NameNode
+# DataNode
+# ResourceManager
+# NodeManager
+```
+
+## ============================================================
+## PASO 3.2 CONFIGURACIÓN VARIABLES DE ENTORNO
+## ============================================================
+
+```{r}
+
+library(sparklyr)
+
+library(dplyr)
+
+
+Sys.setenv(
+  JAVA_HOME =
+    "C:/Progra~1/Java/jdk1.8.0_111"
+)
+
+Sys.setenv(
+  HADOOP_HOME =
+    "C:/BigData/Hadoop"
+)
+
+Sys.setenv(
+  HADOOP_CONF_DIR =
+    "C:/BigData/Hadoop/etc/hadoop"
+)
+
+Sys.setenv(
+  PATH = paste(
+    Sys.getenv("PATH"),
+    "C:/BigData/Hadoop/bin",
+    sep = ";"
+  )
+)
+
+
+
+
+```
+
+
+
+## ============================================================
+## PASO 4 - SUBIR CSV A HDFS
+## ============================================================
+
+```{r}
+
+ruta_proyecto <-
+  "C:/Users/user/Documents/PROYECTOS/BIG DATA/PROYECTO"
+
+setwd(ruta_proyecto)
+
+# Crear directorio HDFS
+system(
+  "hdfs dfs -mkdir -p /proyecto/data"
+)
+
+# Subir archivo a HDFS
+system(
+  "hdfs dfs -put -f elec_noheader.csv /proyecto/data"
+)
+
+# Verificar archivo en HDFS
+system(
+  "hdfs dfs -ls /proyecto/data"
+)
+
+
+```
+
+## ============================================================
+## PASO 5 - CONECTAR SPARK
+## ============================================================
+
+```{r}
+library(sparklyr)
+
+library(dplyr)
+
+library(ggplot2)
+
+config <- spark_config()
+
+```
+
+## ------------------------------------------------------------
+## CONFIGURACIÓN MEMORIA CONTROLADA
+## Máquina 16 GB RAM
+## Spark usará 4 GB
+## ------------------------------------------------------------
+
+```{r}
+config$spark.driver.memory <- "4G"
+
+config$spark.executor.memory <- "4G"
+```
+
+## ------------------------------------------------------------
+## PARTICIONES CONTROLADAS
+## ------------------------------------------------------------
+```{r}
+config$spark.sql.shuffle.partitions <- 16
+```
+
+## ------------------------------------------------------------
+## EVITAR SATURACIÓN
+## ------------------------------------------------------------
+
+```{r}
+config$spark.memory.fraction <- 0.6
+
+config$spark.memory.storageFraction <- 0.5
+```
+
+
+
+## ============================================================
+## CONFIGURAR DIRECTORIO TEMPORAL SPARK/HIVE
+## ============================================================
+
+```{r}
+
+
+
+
+
+
+config <- spark_config()
+
+
+dir.create(
+  "C:/spark-temp",
+  showWarnings = FALSE
+)
+
+config$spark.sql.warehouse.dir <- "file:///C:/spark-temp"
+
+config$spark.local.dir <- "C:/spark-temp"
+
+config$spark.hadoop.javax.jdo.option.ConnectionURL <-
+  "jdbc:derby:;databaseName=C:/spark-temp/metastore_db;create=true"
+
+
+
+
+```
+
+## ------------------------------------------------------------
+## DESACTIVAR HIVE
+## ------------------------------------------------------------
+
+```{r}
+config$spark.sql.catalogImplementation <- "in-memory"
+```
+
+
+
+
+
+
+
+## ------------------------------------------------------------
+## CONEXIÓN SPARK
+## ------------------------------------------------------------
+
+
+```{r}
+
+
+sc <- spark_connect(
+  master = "local",
+  version = "2.4",
+  config = config
+)
+```
+## ============================================================
+## PASO 6 - LEER HDFS SIN spark_read_csv()
+
+##  Usa Spark JVM directamente:
+## ============================================================
+
+```{r}
+
+spark_session <- sparklyr::spark_session(sc)
+
+
+sql_context <- sparklyr::invoke(
+  spark_session,
+  "sqlContext"
+)
+
+reader <- invoke(
+  sql_context,
+  "read"
+)
+
+reader <- invoke(
+  reader,
+  "option",
+  "header",
+  "false"
+)
+
+reader <- invoke(
+  reader,
+  "option",
+  "inferSchema",
+  "true"
+)
+
+datos_jdf <- invoke(
+  reader,
+  "csv",
+  "hdfs://localhost:9000/proyecto/data/elec_noheader.csv"
+)
+
+sparklyr::invoke(
+  datos_jdf,
+  "show",
+  20L
+)
+
+
+
+
+```
+
+## ============================================================
+## 7 VERIFICAR QUE ESTAN LOS DATOS
+## ============================================================
+
+
+```{r}
+sparklyr::invoke(
+  datos_jdf,
+  "count"
+)
+```
+
+## ============================================================
+##  VER las columnas
+## ============================================================
+
+```{r}
+columnas <- sparklyr::invoke(
+  datos_jdf,
+  "columns"
+)
+
+columnas
+```
+
+## ============================================================
+## PASO 7 - CACHEAR DATASET
+## ============================================================
+
+```{r}
+
+datos_jdf <- sparklyr::invoke(
+  datos_jdf,
+  "cache"
+)
+
+
+```
+
+## ============================================================
+## Primero crear vista temporal
+## ============================================================
+
+
+
+```{r}
+sparklyr::invoke(
+  datos_jdf,
+  "createOrReplaceTempView",
+  "energia"
+)
+```
+
+## ============================================================
+## 9 Crear el SQL distribuido de agrupacion
+## ============================================================
+
+
+
+```{r}
+
+columna_hora <- sparklyr::invoke(
+  datos_jdf,
+  "col",
+  "_c4"
+)
+
+
+
+grouped <- sparklyr::invoke(
+  datos_jdf,
+  "groupBy",
+  list(columna_hora)
+)
+
+
+
+```
+
+## ============================================================
+## EJECUTAR EL PROMEDIO
+## ============================================================
+
+```{r}
+resultado_jdf <- sparklyr::invoke(
+  grouped,
+  "mean",
+  list("_c3")
+)
+
+```
+
+## ============================================================
+## VER LA CANTIDAD
+## ============================================================
+
+
+```{r}
+sparklyr::invoke(
+  resultado_jdf,
+  "count"
+)
+```
+
+## ============================================================
+##  CAMBIAR A DATA SET
+## ============================================================
+
+
+```{r}
+
+json_resultado <- sparklyr::invoke(
+  resultado_jdf,
+  "toJSON"
+)
+
+
+```
+
+```{r}
+json_r <- sparklyr::invoke(
+  json_resultado,
+  "collect"
+)
+```
+
+
+## Convertir a dataframe R
+
+```{r}
+library(jsonlite)
+
+grafico_df <- stream_in(
+  textConnection(
+    paste(json_r, collapse = "\n")
+  )
+)
+```
+
+## VER RESULTADOS
+
+
+```{r}
+print(grafico_df)
+```
+
+
+## GRAFICAR LOS VALORES PROMEDIOS
+
+```{r}
+
+library(ggplot2)
+
+ggplot(
+  grafico_df,
+
+  aes(
+    x = factor(`_c4`),
+
+    y = `avg(_c3)`,
+
+    group = 1
+  )
+) +
+
+  geom_line(
+    colour = "blue",
+    linewidth = 1.2
+  ) +
+
+  geom_point(
+    colour = "red",
+    size = 3
+  ) +
+
+  xlab("Hora") +
+
+  ylab("Promedio de consumo") +
+
+  ggtitle(
+    "Consumo promedio eléctrico por hora"
+  ) +
+
+  theme_bw()
+
+
+
+
+```
+
+## PASO 10 - GUARDAR RESULTADOS EN HDFS
+## ===========================================
+
+```{r}
+
+writer <- sparklyr::invoke(
+  resultado_jdf,
+  "write"
+)
+
+writer <- sparklyr::invoke(
+  writer,
+  "mode",
+  "overwrite"
+)
+
+sparklyr::invoke(
+  writer,
+  "csv",
+  "hdfs://localhost:9000/proyecto/output"
+)
+
+
+```
+
+
+## PASO 11 - VERIFICAR EL PROYECTO ESTE GUARDADO EN HDFS
+## ===========================================
+
+```{r}
+system(
+  "hdfs dfs -ls /proyecto/output"
+)
+```
+
+# ============================================================
+# PASO 12 - LIMPIAR MEMORIA
+# ============================================================
+
+
+```{r}
+
+rm(datos_jdf)
+
+rm(resultado_jdf)
+
+rm(grafico_df)
+
+rm(writer)
+
+gc()
+
+
+```
+
+# ============================================================
+# PASO 13 - LIBERAR CACHE y CERRAR SPARK
+# ============================================================
+
+
+
+```{r}
+
+spark_disconnect(sc)
+
+rm(list = ls())
+
+gc()
+
+```
+
+
+
+
+
+
